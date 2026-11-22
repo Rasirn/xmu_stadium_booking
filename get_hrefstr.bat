@@ -3,10 +3,20 @@ rem 读取厦大体育 H5 hrefstr（Windows 入口）。
 rem 优先用 runtime\windows-*\python.exe（免安装），没有才找系统 Python。
 rem 成功后把 hrefstr 复制到剪贴板并显示；本脚本不读也不写凭据。
 rem
-rem 维护提醒：本文件必须保存为 UTF-8（无 BOM）+ CRLF 换行，
+rem 维护提醒 1：本文件必须保存为 UTF-8（无 BOM）+ CRLF 换行，
 rem 否则 cmd 解析 goto 标签会失败（双击后窗口一闪而过），中文也会乱码。
-setlocal EnableExtensions EnableDelayedExpansion
+rem
+rem 维护提醒 2：if (...) 块里不要直接用 %~dp0。块内容在解析阶段就会展开，
+rem 路径里的 ) 会被当成块的结束符，剩下的路径碎片被当成命令执行
+rem （表现为 "The filename, directory name, or volume label syntax is incorrect."
+rem  加一句 "'m' is not recognized as an internal or external command"）。
+rem 所以先存成 SCRIPT_DIR，块内一律用 !SCRIPT_DIR!（延迟展开，执行时才替换）。
+
+setlocal EnableExtensions
 chcp 65001 >nul 2>nul
+set "SCRIPT_DIR=%~dp0"
+set "SCRIPT_NAME=%~nx0"
+setlocal EnableDelayedExpansion
 title 获取厦大体育 hrefstr
 
 set "CHECK=import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"
@@ -15,21 +25,20 @@ set "EXITCODE=0"
 
 rem 双击时 cmd 的命令行里含本文件名；命令行里手动执行则没有。只在前者停住等按键。
 set "INTERACTIVE=0"
-echo !cmdcmdline!| find /i "%~nx0" >nul && set "INTERACTIVE=1"
+echo !cmdcmdline!| find /i "!SCRIPT_NAME!" >nul && set "INTERACTIVE=1"
 
 rem 切到脚本目录，后面统一用不带空格的相对路径。
-rem 原因：for /f 会把命令交给 cmd /c，如果命令以带引号的路径开头（"C:\...\python.exe"），
-rem cmd 会剥掉首尾引号，拼出一个含引号的非法路径，报
-rem "The filename, directory name, or volume label syntax is incorrect."。
+rem 原因：for /f 会把命令交给 cmd /c，命令若以带引号的路径开头，
+rem cmd 会剥掉首尾引号，拼出含引号的非法路径。
 set "PUSHED=0"
-pushd "%~dp0" >nul 2>nul && set "PUSHED=1"
+pushd "!SCRIPT_DIR!" >nul 2>nul && set "PUSHED=1"
 if not "%PUSHED%"=="1" (
-    echo 无法进入脚本所在目录：%~dp0
+    echo 无法进入脚本所在目录：!SCRIPT_DIR!
     set "EXITCODE=2"
     goto done
 )
 
-rem 1) 随包便携运行时（相对路径，不带引号，避开上面那个坑）
+rem 1) 随包便携运行时（相对路径，不带引号）
 if exist "runtime\windows-amd64\python.exe" set "PYQ=runtime\windows-amd64\python.exe"
 if not defined PYQ if exist "runtime\windows-arm64\python.exe" set "PYQ=runtime\windows-arm64\python.exe"
 if defined PYQ (
@@ -63,10 +72,8 @@ set "HREF="
 for /f "delims=" %%L in ('%PYQ% "get_hrefstr.py" %*') do if not defined HREF set "HREF=%%L"
 if not defined HREF (
     echo.
-    echo 自动复制没成功，下面直接执行一次；结果请手动复制：
-    %PYQ% "get_hrefstr.py" %*
-    if errorlevel 1 goto failed
-    goto done
+    echo 没拿到 hrefstr，具体原因见上面的提示。
+    goto failed
 )
 
 <nul set /p "=!HREF!"|clip

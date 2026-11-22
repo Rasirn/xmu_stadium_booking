@@ -185,10 +185,26 @@ def _windows_search_bases() -> list[Path]:
 
 
 def _find_leveldb_dirs(bases: list[Path], max_depth: int = 3) -> list[Path]:
-    found: list[Path] = []
-    for base in bases:
-        if not base.is_dir():
+    """Search `bases` for leveldb dirs, returning every database exactly once.
+
+    The Windows candidates overlap: `...\\radium` contains
+    `...\\radium\\web\\profiles`, so walking both reports the same leveldb dir
+    twice and the caller mistakes one profile for several (and bails out with
+    "multiple profiles found").  Prune nested bases first, then drop repeated
+    paths — symlinked layouts collapse to the same real path too.
+    """
+    roots: list[Path] = []
+    for base in sorted(bases, key=lambda p: len(p.parts)):
+        resolved = Path(os.path.realpath(base))
+        if not resolved.is_dir():
             continue
+        if any(resolved == root or root in resolved.parents for root in roots):
+            continue
+        roots.append(resolved)
+
+    found: list[Path] = []
+    seen: set = set()
+    for base in roots:
         try:
             for root, dirs, _files in os.walk(base):
                 rel = Path(root).relative_to(base)
@@ -196,8 +212,13 @@ def _find_leveldb_dirs(bases: list[Path], max_depth: int = 3) -> list[Path]:
                     dirs[:] = []
                     continue
                 candidate = Path(root) / DB_SUBDIR
-                if (candidate / "CURRENT").is_file():
-                    found.append(candidate)
+                if not (candidate / "CURRENT").is_file():
+                    continue
+                key = os.path.realpath(candidate)
+                if key in seen:
+                    continue
+                seen.add(key)
+                found.append(candidate)
         except OSError:
             continue
     return found
@@ -248,7 +269,12 @@ def main(argv: list[str] | None = None) -> int:
         _log(f"找到 {len(dirs)} 个候选目录。")
 
     matches: list[tuple[Path, str]] = []
+    seen_dirs: set = set()
     for d in dirs:
+        key = os.path.realpath(d)
+        if key in seen_dirs:
+            continue  # 同一个数据库被不同 base 搜到两次，只算一个候选
+        seen_dirs.add(key)
         if args.verbose:
             _log(f"  候选: {d}")
         try:
