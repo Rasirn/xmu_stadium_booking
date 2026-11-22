@@ -13,6 +13,13 @@ case "$(uname -m)" in
     *)             ARCH="" ;;
 esac
 
+# 从 Release 压缩包解出来的文件和便携 Python 会带 quarantine 标记，
+# 未签名的运行时会被 Gatekeeper 直接 SIGKILL（"Killed: 9"）；这里静默清掉本目录的标记。
+RT="$DIR/runtime/macos-$ARCH"
+if [ -n "$ARCH" ] && [ -e "$RT/bin/python3" ] && xattr "$RT/bin/python3" 2>/dev/null | grep -q quarantine; then
+    xattr -dr com.apple.quarantine "$DIR/runtime" 2>/dev/null || true
+fi
+
 PY=""
 # 1) 随包便携运行时：本平台目录优先，其次 runtime/ 下任意能跑起来的
 for d in "$DIR/runtime/macos-$ARCH" "$DIR/runtime/linux-$ARCH" "$DIR"/runtime/*; do

@@ -7,6 +7,9 @@ set -u
 
 cd "$(dirname "$0")" || exit 1
 
+# 从 Release 下载后本文件也带 quarantine 标记，顺手去掉（只影响本文件）。
+xattr -d com.apple.quarantine "$0" 2>/dev/null || true
+
 if ! href=$(./get_hrefstr.sh); then
     cat >&2 <<'EOF'
 
