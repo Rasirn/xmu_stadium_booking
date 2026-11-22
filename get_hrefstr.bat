@@ -9,9 +9,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title 获取厦大体育 hrefstr
 
-set "DIR=%~dp0"
 set "CHECK=import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)"
-set "PY="
 set "PYQ="
 set "EXITCODE=0"
 
@@ -19,10 +17,21 @@ rem 双击时 cmd 的命令行里含本文件名；命令行里手动执行则�
 set "INTERACTIVE=0"
 echo !cmdcmdline!| find /i "%~nx0" >nul && set "INTERACTIVE=1"
 
-rem 1) 随包便携运行时：amd64 版在 ARM Windows 上也能跑，所以排前面。
-if exist "%DIR%runtime\windows-amd64\python.exe" set "PY=%DIR%runtime\windows-amd64\python.exe"
-if not defined PY if exist "%DIR%runtime\windows-arm64\python.exe" set "PY=%DIR%runtime\windows-arm64\python.exe"
-if defined PY set PYQ="%PY%"
+rem 切到脚本目录，后面统一用不带空格的相对路径。
+rem 原因：for /f 会把命令交给 cmd /c，如果命令以带引号的路径开头（"C:\...\python.exe"），
+rem cmd 会剥掉首尾引号，拼出一个含引号的非法路径，报
+rem "The filename, directory name, or volume label syntax is incorrect."。
+set "PUSHED=0"
+pushd "%~dp0" >nul 2>nul && set "PUSHED=1"
+if not "%PUSHED%"=="1" (
+    echo 无法进入脚本所在目录：%~dp0
+    set "EXITCODE=2"
+    goto done
+)
+
+rem 1) 随包便携运行时（相对路径，不带引号，避开上面那个坑）
+if exist "runtime\windows-amd64\python.exe" set "PYQ=runtime\windows-amd64\python.exe"
+if not defined PYQ if exist "runtime\windows-arm64\python.exe" set "PYQ=runtime\windows-arm64\python.exe"
 if defined PYQ (
     %PYQ% -c "%CHECK%" >nul 2>nul
     if errorlevel 1 set "PYQ="
@@ -51,8 +60,13 @@ if defined JSON goto plain_run
 
 rem 把 stdout 收进变量，再交给 clip；stderr（诊断信息）照常显示在窗口里。
 set "HREF="
-for /f "delims=" %%L in ('%PYQ% "%DIR%get_hrefstr.py" %*') do if not defined HREF set "HREF=%%L"
-if not defined HREF goto failed
+for /f "delims=" %%L in ('%PYQ% "get_hrefstr.py" %*') do if not defined HREF set "HREF=%%L"
+if not defined HREF (
+    echo.
+    echo 没取到结果，下面直接执行一次以显示具体报错：
+    %PYQ% "get_hrefstr.py" %*
+    goto failed
+)
 
 <nul set /p "=!HREF!"|clip
 echo 已复制到剪贴板：
@@ -61,7 +75,7 @@ echo !HREF!
 goto done
 
 :plain_run
-%PYQ% "%DIR%get_hrefstr.py" %*
+%PYQ% "get_hrefstr.py" %*
 if errorlevel 1 goto failed
 goto done
 
@@ -84,6 +98,7 @@ echo   3. 微信已切到新版 h5_token 分支（LocalStorage 里 isNewAjaxRes 
 set "EXITCODE=1"
 
 :done
+if "%PUSHED%"=="1" popd
 if "%INTERACTIVE%"=="1" (
     echo.
     echo 按任意键关闭窗口。
