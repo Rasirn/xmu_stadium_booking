@@ -1,23 +1,35 @@
 # getHrefstr
 
-从本机微信的 WebView 缓存里读出厦大体育的 `hrefstr`（登录上下文，含 `uid/token/sign`），供「基于 hrefstr 登录」使用。
+从电脑版微信的 WebView 缓存里读出厦大体育的 `hrefstr`（登录上下文，含 `uid/token/sign`），供「基于 hrefstr 登录」使用。
 
 只读本地文件：不联网、不写盘，结果只打印到屏幕和剪贴板。
 
 ## 快速开始
 
-**先做一次**：在微信里打开「厦大体育 → 场馆预约」，等页面加载完成。`hrefstr` 是那个页面写进微信缓存的，没打开过就没有数据。
+**第一步 · 在电脑版微信里打开页面**
 
-然后双击对应文件：
+打开「厦大体育 → 场馆预约」，等页面加载完成。`hrefstr` 是那个页面写进电脑微信缓存的，没打开过就没有数据（用手机微信打开不算）。
+
+**第二步 · 下载对应平台的包**（解压即用）
+
+| 平台 | 下载 |
+|---|---|
+| macOS（Apple 芯片） | [getHrefstr-macos-arm64.zip](https://github.com/Rasirn/xmu_stadium_booking/releases/latest/download/getHrefstr-macos-arm64.zip) |
+| Windows（x64 / ARM64） | [getHrefstr-windows-amd64.zip](https://github.com/Rasirn/xmu_stadium_booking/releases/latest/download/getHrefstr-windows-amd64.zip) |
+
+**第三步 · 解压后双击启动**
 
 | 平台 | 双击 | 结果 |
 |---|---|---|
 | macOS | `获取hrefstr.command` | 终端窗口显示，同时复制到剪贴板 |
 | Windows | `get_hrefstr.bat` | 窗口显示，同时复制到剪贴板；按任意键关闭 |
 
-- **整包下载**：[Releases](https://github.com/Rasirn/xmu_stadium_booking/releases/latest) 里有 macOS 和 Windows 两个压缩包，解压即用。
-- **从仓库用**：`runtime/` 里没有运行时的话，macOS 跑 `./fetch_runtime.sh`、Windows 双击 `fetch_runtime.bat` 下载（24 MB / 11 MB），下完再双击启动。
-- macOS 若提示 `Operation not permitted`，给「终端」开完全磁盘访问权限（系统设置 → 隐私与安全性）。
+> **macOS 第一次双击会被系统拦下**，提示「未打开『获取hrefstr.command』：Apple 无法验证它是否包含可能损害 Mac 的恶意软件」。
+> 这时打开「系统设置 → 隐私与安全性 → 安全性」，点「仍要打开」，回到 Finder 再双击一次，在弹窗里选「打开」。只需要做一次，之后不再提示。
+> 如果程序跑起来后报 `Operation not permitted`，那是另一回事：给「终端」开「完全磁盘访问权限」（同在「隐私与安全性」里）。
+
+- **Intel Mac**：现成包是 arm64 的。Intel 机器请从仓库用，`./fetch_runtime.sh` 会自动下 x86_64 运行时。
+- **从仓库用（不下整包）**：`runtime/` 缺失时，macOS 跑 `./fetch_runtime.sh`、Windows 双击 `fetch_runtime.bat`（24 MB / 11 MB），下完再双击启动。
 
 ## 命令行
 
