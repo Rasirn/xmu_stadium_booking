@@ -1,0 +1,7 @@
+# 行尾与文本处理：.bat 必须是 CRLF（cmd 解析 goto 依赖 CRLF），其余统一 LF。
+* text=auto
+*.bat text eol=crlf
+*.command text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
