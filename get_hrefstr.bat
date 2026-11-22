@@ -63,9 +63,10 @@ set "HREF="
 for /f "delims=" %%L in ('%PYQ% "get_hrefstr.py" %*') do if not defined HREF set "HREF=%%L"
 if not defined HREF (
     echo.
-    echo 没取到结果，下面直接执行一次以显示具体报错：
+    echo 自动复制没成功，下面直接执行一次；结果请手动复制：
     %PYQ% "get_hrefstr.py" %*
-    goto failed
+    if errorlevel 1 goto failed
+    goto done
 )
 
 <nul set /p "=!HREF!"|clip
